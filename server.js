@@ -2,6 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const moment = require("moment-timezone");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,6 +29,7 @@ app.use(express.json());
 // ===== DATA CHAT & USER =====
 let chatData = [];      // Memory storage chat
 let userNames = {};     // userId -> name, untuk fix nama satu kali
+let onlineUsers = {};   // userId -> { name, lastActive }
 
 // ===== ROUTE GET MESSAGES =====
 app.get("/messages", (req, res) => {
@@ -42,29 +44,40 @@ app.post("/send", upload.single("image"), (req, res) => {
 
     // ===== FIX BUG NAMA =====
     if (!userNames[userId]) {
-        // User belum punya nama → simpan
         userNames[userId] = name || "Anonymous";
     }
     const finalName = userNames[userId];
 
     // ===== PROSES GAMBAR =====
     let image = null;
-    if (req.file) {
-        image = `/uploads/${req.file.filename}`;
-    }
+    if (req.file) image = `/uploads/${req.file.filename}`;
 
     // ===== WAKTU LOKAL JAKARTA =====
-    const now = new Date();
-    const localTime = new Date(now.getTime() + 7*60*60*1000); // UTC+7
-    const time = localTime.getHours().toString().padStart(2,"0") + ":" + localTime.getMinutes().toString().padStart(2,"0");
+    const time = moment().tz("Asia/Jakarta").format("HH:mm");
 
     const msgObj = { userId, name: finalName, text, image, time };
     chatData.push(msgObj);
 
-    // Batasi max 100 pesan
-    if (chatData.length > 100) chatData = chatData.slice(chatData.length - 100);
+    if(chatData.length>100) chatData = chatData.slice(chatData.length-100);
 
     res.json({ status: "ok", name: finalName });
+});
+
+// ===== ONLINE USERS =====
+app.post("/heartbeat", (req, res) => {
+    const { userId, name } = req.body;
+    if (!userId) return res.status(400).json({ status:"error" });
+    onlineUsers[userId] = { name, lastActive: Date.now() };
+    res.json({ status:"ok" });
+});
+
+app.get("/online", (req,res) => {
+    const now = Date.now();
+    // hapus user idle > 30 detik
+    for(let id in onlineUsers){
+        if(now - onlineUsers[id].lastActive > 30000) delete onlineUsers[id];
+    }
+    res.json(Object.values(onlineUsers).map(u => u.name));
 });
 
 // ===== START SERVER =====
