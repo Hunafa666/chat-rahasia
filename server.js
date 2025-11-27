@@ -53,8 +53,10 @@ app.post("/send", upload.single("image"), (req, res) => {
         image = `/uploads/${req.file.filename}`;
     }
 
+    // ===== WAKTU LOKAL JAKARTA =====
     const now = new Date();
-    const time = now.getHours().toString().padStart(2,"0") + ":" + now.getMinutes().toString().padStart(2,"0");
+    const localTime = new Date(now.getTime() + 7*60*60*1000); // UTC+7
+    const time = localTime.getHours().toString().padStart(2,"0") + ":" + localTime.getMinutes().toString().padStart(2,"0");
 
     const msgObj = { userId, name: finalName, text, image, time };
     chatData.push(msgObj);
