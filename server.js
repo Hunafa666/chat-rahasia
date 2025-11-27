@@ -9,17 +9,21 @@ const PORT = process.env.PORT || 3000;
 
 // ===== STORAGE UNTUK GAMBAR =====
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
+    destination: function (req, file, cb) {
         const dir = "uploads";
         if (!fs.existsSync(dir)) fs.mkdirSync(dir);
         cb(null, dir);
     },
-    filename: (req, file, cb) => {
+    filename: function (req, file, cb) {
         const ext = path.extname(file.originalname);
         cb(null, Date.now() + "-" + Math.floor(Math.random()*10000) + ext);
     }
 });
-const upload = multer({ storage });
+
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 } // max 5MB
+});
 
 // ===== STATIC FILE =====
 app.use(express.static("public"));
