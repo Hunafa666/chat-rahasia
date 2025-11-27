@@ -9,7 +9,7 @@
 body{margin:0;padding:0;font-family:'Quicksand',sans-serif;background:#f0e6dc;}
 header{max-width:600px;margin:20px auto;padding:20px 0;font-family:'ARIAL', bold;font-size:2rem;color:#000000;text-align:center;border-radius:20px;background:linear-gradient(90deg,#ffffff);box-shadow:0 0 0 3px #4B2E2E,0 4px 10px rgba(0,0,0,0.3);}
 #chatContainer{max-width:600px;margin:20px auto;height:70vh;display:flex;flex-direction:column;background: rgba(165,123,91,0.85);border-radius:20px;box-shadow:0 4px 15px rgba(0,0,0,0.3);padding:15px;}
-#chatBox{flex:1;overflow-y:auto;padding-right:5px;scroll-behavior:smooth;}
+#chatBox{flex:1;overflow-y:auto;padding-right:5px;scroll-behavior:auto;}
 #inputBox{display:flex;gap:5px;margin-top:10px;}
 #inputBox input[type=text]{flex:1;padding:10px;border-radius:20px;border:none;font-size:16px;}
 #inputBox input[type=file]{border:none;width:35%;padding:5px;}
@@ -45,20 +45,25 @@ header{font-size:1.8rem;}
 </div>
 
 <script>
-let userId = sessionStorage.getItem("userId");
-if(!userId){ userId="user_"+Math.floor(Math.random()*10000); sessionStorage.setItem("userId", userId); }
+// ===== USERNAME TETAP =====
+let userId = localStorage.getItem("userId");
+if(!userId){ userId="user_"+Math.floor(Math.random()*10000); localStorage.setItem("userId", userId); }
 
-let myName = sessionStorage.getItem("myName");
-if(!myName){ myName = prompt("Masukkan nama kamu","Anon"); sessionStorage.setItem("myName", myName); }
+let myName = localStorage.getItem("myName");
+if(!myName){ myName = prompt("Masukkan nama kamu","Anon"); localStorage.setItem("myName", myName); }
 
 const chatBox = document.getElementById("chatBox");
 const msgInput = document.getElementById("msgInput");
 const imgInput = document.getElementById("imgInput");
 
+let lastMessageCount = 0;
+
+// ===== LOAD MESSAGES =====
 async function loadMessages(){
     try{
         const res = await fetch("/messages");
         const data = await res.json();
+
         chatBox.innerHTML = "";
 
         let imagesToLoad = 0;
@@ -74,7 +79,8 @@ async function loadMessages(){
                 imagesToLoad++;
                 img.onload = () => {
                     imagesToLoad--;
-                    if(imagesToLoad===0){
+                    // scroll hanya saat pesan baru diterima
+                    if(imagesToLoad===0 && data.length > lastMessageCount){
                         chatBox.scrollTop = chatBox.scrollHeight;
                     }
                 }
@@ -84,12 +90,17 @@ async function loadMessages(){
             chatBox.appendChild(div);
         });
 
-        if(imagesToLoad===0){
+        // scroll ke bawah hanya kalau ada pesan baru dan semua gambar sudah load
+        if(imagesToLoad===0 && data.length > lastMessageCount){
             chatBox.scrollTop = chatBox.scrollHeight;
         }
+
+        lastMessageCount = data.length;
+
     }catch(err){ console.error(err); }
 }
 
+// ===== SEND MESSAGE =====
 async function kirim(){
     const text = msgInput.value.trim();
     const imgFile = imgInput.files[0];
