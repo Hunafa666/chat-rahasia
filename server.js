@@ -27,9 +27,9 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(express.json());
 
 // ===== DATA CHAT & USER =====
-let chatData = [];      // Memory storage chat
-let userNames = {};     // userId -> name, untuk fix nama satu kali
-let onlineUsers = {};   // userId -> { name, lastActive }
+let chatData = [];
+let userNames = {};
+let onlineUsers = {};
 
 // ===== ROUTE GET MESSAGES =====
 app.get("/messages", (req, res) => {
@@ -39,20 +39,14 @@ app.get("/messages", (req, res) => {
 // ===== ROUTE SEND MESSAGE =====
 app.post("/send", upload.single("image"), (req, res) => {
     const { text, name, userId } = req.body;
+    if(!userId) return res.status(400).json({ status:"error", message:"userId required" });
 
-    if (!userId) return res.status(400).json({ status: "error", message: "userId required" });
-
-    // ===== FIX BUG NAMA =====
-    if (!userNames[userId]) {
-        userNames[userId] = name || "Anonymous";
-    }
+    if(!userNames[userId]) userNames[userId] = name || "Anonymous";
     const finalName = userNames[userId];
 
-    // ===== PROSES GAMBAR =====
     let image = null;
-    if (req.file) image = `/uploads/${req.file.filename}`;
+    if(req.file) image = `/uploads/${req.file.filename}`;
 
-    // ===== WAKTU LOKAL JAKARTA =====
     const time = moment().tz("Asia/Jakarta").format("HH:mm");
 
     const msgObj = { userId, name: finalName, text, image, time };
@@ -60,24 +54,23 @@ app.post("/send", upload.single("image"), (req, res) => {
 
     if(chatData.length>100) chatData = chatData.slice(chatData.length-100);
 
-    res.json({ status: "ok", name: finalName });
+    res.json({ status:"ok", name: finalName });
 });
 
 // ===== ONLINE USERS =====
-app.post("/heartbeat", (req, res) => {
+app.post("/heartbeat", (req,res)=>{
     const { userId, name } = req.body;
-    if (!userId) return res.status(400).json({ status:"error" });
+    if(!userId) return res.status(400).json({ status:"error" });
     onlineUsers[userId] = { name, lastActive: Date.now() };
     res.json({ status:"ok" });
 });
 
-app.get("/online", (req,res) => {
+app.get("/online", (req,res)=>{
     const now = Date.now();
-    // hapus user idle > 30 detik
     for(let id in onlineUsers){
         if(now - onlineUsers[id].lastActive > 30000) delete onlineUsers[id];
     }
-    res.json(Object.values(onlineUsers).map(u => u.name));
+    res.json(Object.values(onlineUsers).map(u=>u.name));
 });
 
 // ===== START SERVER =====
