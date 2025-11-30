@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>CHAT RAHASIA</title>
+
 <style>
     body {
         margin: 0;
@@ -31,8 +32,11 @@
         margin-bottom: 10px;
         border-radius: 10px;
         max-width: 80%;
+        animation: fade .3s;
     }
-    .me { background: #dcf8c6; }
+    .me { background: #dcf8c6; margin-left: auto; }
+    @keyframes fade { from {opacity:0;} to {opacity:1;} }
+
     #input-area {
         display: flex;
         margin-top: 15px;
@@ -44,6 +48,7 @@
         border-radius: 10px;
         border: none;
     }
+
     button {
         padding: 10px 15px;
         border: none;
@@ -51,8 +56,22 @@
         cursor: pointer;
     }
     #sendBtn { background: #4CAF50; color: white; }
-    #clearBtn { background: #ff5252; color: white; margin-top: 10px; width: 100%; }
+    #clearBtn { 
+        background: #ff5252; 
+        color: white; 
+        margin-top: 10px; 
+        width: 100%; 
+    }
+
+    .onlineBox {
+        background:white; 
+        padding:5px 10px; 
+        border-radius:10px;
+        margin-bottom:10px;
+        text-align:right;
+    }
 </style>
+
 </head>
 <body>
 
@@ -60,66 +79,97 @@
 
 <div class="container">
 
+    <div class="onlineBox">Online: <span id="onlineCount">0</span></div>
+
     <div id="messages"></div>
 
-    <div id="input-area">
-        <input id="input" type="text" placeholder="Ketik pesan...">
-        <button id="sendBtn">Kirim</button>
-    </div>
-
-    <button id="clearBtn">Hapus Chat</button>
+    <form id="form" enctype="multipart/form-data">
+        <div id="input-area">
+            <input id="input" type="text" placeholder="Ketik pesan..." autocomplete="off">
+            <input type="file" id="image" accept="image/*">
+            <button id="sendBtn" type="submit">Kirim</button>
+        </div>
+        <button id="clearBtn" type="button">Hapus Chat</button>
+    </form>
 
 </div>
 
 <script>
+    const userId = localStorage.getItem("userId") || crypto.randomUUID();
+    localStorage.setItem("userId", userId);
+    
     const messagesDiv = document.getElementById("messages");
 
-    function loadChat() {
+    // ================== LOAD CHAT ===================
+    async function loadMessages() {
+        const res = await fetch("/messages?userId=" + userId);
+        const data = await res.json();
+
         messagesDiv.innerHTML = "";
-        const saved = JSON.parse(localStorage.getItem("chatRahasia")) || [];
-        saved.forEach(m => addMessage(m.text, m.me));
+        data.forEach(m => addMessage(m));
     }
 
-    function saveChat(text, me) {
-        const saved = JSON.parse(localStorage.getItem("chatRahasia")) || [];
-        saved.push({ text, me });
-        localStorage.setItem("chatRahasia", JSON.stringify(saved));
-    }
-
-    function addMessage(text, me=false) {
+    function addMessage(msg) {
         const div = document.createElement("div");
-        div.className = "msg";
-        if (me) div.classList.add("me");
-        div.textContent = text;
+        div.className = "msg" + (msg.userId === userId ? " me" : "");
+        div.innerHTML = `
+            <b>${msg.name}</b> (${msg.time})<br>
+            ${msg.text ? msg.text : ""}
+            ${msg.image ? `<br><img src="${msg.image}" style="max-width:200px;border-radius:10px;">` : ""}
+        `;
         messagesDiv.appendChild(div);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    document.getElementById("sendBtn").onclick = async () => {
-        const val = input.value.trim();
-        if (!val) return;
+    // ================== SEND MESSAGE ===================
+    document.getElementById("form").onsubmit = async (e) => {
+        e.preventDefault();
+        const text = document.getElementById("input").value;
+        const file = document.getElementById("image").files[0];
 
-        addMessage(val, true);
-        saveChat(val, true);
-        input.value = "";
+        if (!text && !file) return;
 
-        const res = await fetch("/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: val })
-        });
-        const data = await res.json();
+        const fd = new FormData();
+        fd.append("text", text);
+        fd.append("userId", userId);
+        fd.append("name", "Pengguna");
+        if (file) fd.append("image", file);
 
-        addMessage(data.reply, false);
-        saveChat(data.reply, false);
+        await fetch("/send", { method:"POST", body:fd });
+
+        document.getElementById("input").value = "";
+        document.getElementById("image").value = "";
+
+        loadMessages();
     };
 
-    document.getElementById("clearBtn").onclick = () => {
-        localStorage.removeItem("chatRahasia");
+    // ================== CLEAR CHAT ===================
+    document.getElementById("clearBtn").onclick = async () => {
+        await fetch("/clear", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ userId })
+        });
         messagesDiv.innerHTML = "";
     };
 
-    loadChat();
+    // ================== ONLINE USERS ===================
+    setInterval(async () => {
+        await fetch("/heartbeat", {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body: JSON.stringify({ userId, name:"Pengguna" })
+        });
+
+        const r = await fetch("/online");
+        const list = await r.json();
+        document.getElementById("onlineCount").textContent = list.length;
+    }, 3000);
+
+    // ================== AUTO REFRESH ===================
+    setInterval(loadMessages, 2000);
+
+    loadMessages();
 </script>
 
 </body>

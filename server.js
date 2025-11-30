@@ -7,7 +7,7 @@ const moment = require("moment-timezone");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ===== STORAGE GAMBAR =====
+// ===== UPLOADS =====
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         const dir = "uploads";
@@ -16,108 +16,79 @@ const storage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const ext = path.extname(file.originalname);
-        cb(null, Date.now() + "-" + Math.floor(Math.random()*10000) + ext);
+        cb(null, Date.now() + "-" + Math.random()*10000 + ext);
     }
 });
+const upload = multer({ storage });
 
-const upload = multer({ 
-    storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 } // max 5MB
-});
-
-// ===== STATIC FILE =====
+// ===== STATIC =====
 app.use(express.static("public"));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(express.json());
 
-// ===== DATA CHAT =====
+// ===== DATA =====
 let chatData = [];
-let userNames = {};
+let lastClear = {};
 let onlineUsers = {};
+let userNames = {};
 
-// ===== DATA CLEAR CHAT PER USER =====
-let lastClear = {};   // <— userId: timestamp
-
-// ===== ROUTE GET MESSAGES =====
+// ===== GET MESSAGES =====
 app.get("/messages", (req, res) => {
     const userId = req.query.userId;
-
-    // Jika tidak ada userId, kirim semua chat
-    if (!userId) {
-        return res.json(chatData);
-    }
-
-    // Ambil waktu kapan user nge-clear
     const clearTime = lastClear[userId] || 0;
 
-    // Filter chat yang muncul SETELAH user clear chat
-    const filtered = chatData.filter(msg => {
-        return msg.timestamp > clearTime;
-    });
-
-    res.json(filtered);
+    res.json(chatData.filter(m => m.timestamp > clearTime));
 });
 
-// ===== ROUTE SEND MESSAGE =====
+// ===== SEND =====
 app.post("/send", upload.single("image"), (req, res) => {
-    const { text, name, userId } = req.body;
-    if(!userId) return res.status(400).json({ status:"error", message:"userId required" });
-
-    if(!userNames[userId]) userNames[userId] = name || "Anonymous";
-    const finalName = userNames[userId];
-
-    let image = null;
-    if(req.file) image = `/uploads/${req.file.filename}`;
-
-    const time = moment().tz("Asia/Jakarta").format("HH:mm");
-
-    const msgObj = { 
-        userId, 
-        name: finalName, 
-        text, 
-        image, 
-        time,
-        timestamp: Date.now()       // <— penting untuk fitur clear chat!
-    };
-
-    chatData.push(msgObj);
-
-    if(chatData.length > 100) chatData = chatData.slice(chatData.length - 100);
-
-    res.json({ status:"ok", name: finalName });
-});
-
-// ===== CLEAR CHAT PER USER =====
-app.post("/clear", (req, res) => {
-    const { userId } = req.body;
+    const { text, userId, name } = req.body;
 
     if (!userId) {
-        return res.status(400).json({ status: "error", message: "userId diperlukan" });
+        return res.status(400).json({ status:"error", message:"userId required" });
     }
 
-    // Simpan timestamp kapan user nge-clear chat
-    lastClear[userId] = Date.now();
+    if (!userNames[userId]) userNames[userId] = name || "Anonymous";
 
-    res.json({ status: "ok", message: "Chat tampilan user dibersihkan" });
+    const msg = {
+        userId,
+        name: userNames[userId],
+        text: text || "",
+        image: req.file ? "/uploads/" + req.file.filename : null,
+        time: moment().tz("Asia/Jakarta").format("HH:mm"),
+        timestamp: Date.now()
+    };
+
+    chatData.push(msg);
+    if (chatData.length > 200) chatData.shift();
+
+    res.json({ status:"ok" });
 });
 
-// ===== ONLINE USERS =====
-app.post("/heartbeat", (req,res)=>{
+// ===== CLEAR =====
+app.post("/clear", (req, res) => {
+    const { userId } = req.body;
+    lastClear[userId] = Date.now();
+    res.json({ status:"ok" });
+});
+
+// ===== HEARTBEAT =====
+app.post("/heartbeat", (req, res) => {
     const { userId, name } = req.body;
-    if(!userId) return res.status(400).json({ status:"error" });
     onlineUsers[userId] = { name, lastActive: Date.now() };
     res.json({ status:"ok" });
 });
 
-app.get("/online", (req,res)=>{
+// ===== ONLINE =====
+app.get("/online", (req, res) => {
     const now = Date.now();
-    for(let id in onlineUsers){
-        if(now - onlineUsers[id].lastActive > 30000) delete onlineUsers[id];
+    for (let u in onlineUsers) {
+        if (now - onlineUsers[u].lastActive > 20000) delete onlineUsers[u];
     }
-    res.json(Object.values(onlineUsers).map(u=>u.name));
+    res.json(Object.values(onlineUsers).map(u => u.name));
 });
 
-// ===== START SERVER =====
+// ===== START =====
 app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+    console.log("Server running on PORT " + PORT);
 });
