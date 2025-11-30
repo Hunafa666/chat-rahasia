@@ -2,169 +2,124 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CHAT RAHASIA</title>
-<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand&display=swap" rel="stylesheet">
 <style>
-body{margin:0;padding:0;font-family:'Quicksand',sans-serif;background:#f0e6dc;}
-header{max-width:600px;margin:20px auto;padding:20px 0;font-family:'ARIAL', bold;font-size:2rem;color:#000;text-align:center;border-radius:20px;background:linear-gradient(90deg,#ffffff);box-shadow:0 0 0 3px #4B2E2E,0 4px 10px rgba(0,0,0,0.3);}
-#chatContainer{max-width:600px;margin:20px auto;height:70vh;display:flex;flex-direction:column;background: rgba(165,123,91,0.85);border-radius:20px;box-shadow:0 4px 15px rgba(0,0,0,0.3);padding:15px;position:relative;}
-#chatBox{flex:1;overflow-y:auto;padding-right:5px;scroll-behavior:auto;}
-#inputBox{display:flex;gap:5px;margin-top:10px;}
-#inputBox input[type=text]{flex:1;padding:10px;border-radius:20px;border:none;font-size:16px;}
-#inputBox input[type=file]{border:none;width:35%;padding:5px;}
-#inputBox button{padding:10px 20px;border:none;border-radius:20px;background:#4caf50;color:#fff;cursor:pointer;font-size:16px;}
-.msg{max-width:70%;padding:10px 15px;border-radius:25px;margin:5px 0;box-shadow:0 1px 3px rgba(0,0,0,0.2);word-wrap:break-word;overflow-wrap:break-word;white-space:pre-wrap;transition: all 0.2s ease;}
-.msg.self{align-self:flex-end;background:#4caf50;color:white;}
-.msg.other{align-self:flex-start;background:#ffffff;color:black;}
-.msg .name{font-weight:bold;margin-bottom:3px;}
-.msg .time{font-size:12px;color:#555;text-align:right;margin-top:3px;}
-.msg img{max-width:100%;border-radius:15px;margin-top:5px;display:block;}
-#onlineUsers{position:absolute;top:15px;right:15px;background:rgba(255,255,255,0.8);padding:5px 10px;border-radius:15px;font-size:14px;max-width:150px;}
-@media screen and (max-width:599px){
-header,#chatContainer{max-width:95%;margin:15px auto;padding:15px;border-radius:15px;}
-#chatBox{padding-right:0;}
-#inputBox input[type=text]{font-size:14px;padding:8px;}
-#inputBox button{font-size:14px;padding:8px 12px;}
-.msg{max-width:80%;font-size:14px;padding:8px 10px;}
-.msg img{max-width:90%;}
-header{font-size:1.8rem;}
-#onlineUsers{font-size:12px;max-width:100px;}
-}
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f0e4d7;
+    }
+    .container {
+        width: 600px;
+        margin: 40px auto;
+        background: #b5896b;
+        border-radius: 20px;
+        padding: 20px;
+        box-shadow: 0 0 10px #00000055;
+    }
+    #messages {
+        height: 380px;
+        overflow-y: auto;
+        background: #d1a888;
+        padding: 10px;
+        border-radius: 15px;
+        border: 3px solid #8b5e3c;
+    }
+    .msg {
+        background: white;
+        padding: 8px 12px;
+        margin-bottom: 10px;
+        border-radius: 10px;
+        max-width: 80%;
+    }
+    .me { background: #dcf8c6; }
+    #input-area {
+        display: flex;
+        margin-top: 15px;
+        gap: 10px;
+    }
+    #input {
+        flex: 1;
+        padding: 10px;
+        border-radius: 10px;
+        border: none;
+    }
+    button {
+        padding: 10px 15px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+    }
+    #sendBtn { background: #4CAF50; color: white; }
+    #clearBtn { background: #ff5252; color: white; margin-top: 10px; width: 100%; }
 </style>
 </head>
 <body>
 
-<header>CHAT RAHASIA</header>
+<h1 style="text-align:center; margin-top:20px;">CHAT RAHASIA</h1>
 
-<div id="chatContainer">
-    <div id="chatBox"></div>
-    <div id="onlineUsers">Online: 0</div>
-    <div id="inputBox">
-        <input id="msgInput" type="text" placeholder="Ketik pesan...">
-        <input id="imgInput" type="file" accept="image/*">
-        <button id="btnSend">Kirim</button>
+<div class="container">
+
+    <div id="messages"></div>
+
+    <div id="input-area">
+        <input id="input" type="text" placeholder="Ketik pesan...">
+        <button id="sendBtn">Kirim</button>
     </div>
 
-    <!-- TOMBOL CLEAR CHAT -->
-    <button id="clearChat" style="margin-top:10px;padding:10px 15px;border:none;border-radius:15px;background:#d9534f;color:white;cursor:pointer;font-size:14px;width:140px;align-self:center;">Hapus Chat</button>
-    <button id="clearChat" style="margin-top:10px;padding:10px 15px;border:none;border-radius:15px;background:#d9534f;color:white;cursor:pointer;font-size:14px;width:120px;align-self:center;">Clear Chat</button>
+    <button id="clearBtn">Hapus Chat</button>
+
 </div>
 
 <script>
-// ===== USERNAME TETAP =====
-let userId = localStorage.getItem("userId");
-if(!userId){ userId="user_"+Math.floor(Math.random()*10000); localStorage.setItem("userId", userId); }
+    const messagesDiv = document.getElementById("messages");
 
-let myName = localStorage.getItem("myName");
-if(!myName){ myName = prompt("Masukkan nama kamu","Anon"); localStorage.setItem("myName", myName); }
+    function loadChat() {
+        messagesDiv.innerHTML = "";
+        const saved = JSON.parse(localStorage.getItem("chatRahasia")) || [];
+        saved.forEach(m => addMessage(m.text, m.me));
+    }
 
-const chatBox = document.getElementById("chatBox");
-const msgInput = document.getElementById("msgInput");
-const imgInput = document.getElementById("imgInput");
-const onlineUsersDiv = document.getElementById("onlineUsers");
+    function saveChat(text, me) {
+        const saved = JSON.parse(localStorage.getItem("chatRahasia")) || [];
+        saved.push({ text, me });
+        localStorage.setItem("chatRahasia", JSON.stringify(saved));
+    }
 
-let lastMessageCount = 0;
+    function addMessage(text, me=false) {
+        const div = document.createElement("div");
+        div.className = "msg";
+        if (me) div.classList.add("me");
+        div.textContent = text;
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
 
-// ===== LOAD MESSAGES =====
-async function loadMessages(){
-    try{
-        const res = await fetch("/messages");
+    document.getElementById("sendBtn").onclick = async () => {
+        const val = input.value.trim();
+        if (!val) return;
+
+        addMessage(val, true);
+        saveChat(val, true);
+        input.value = "";
+
+        const res = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: val })
+        });
         const data = await res.json();
 
-        chatBox.innerHTML = "";
+        addMessage(data.reply, false);
+        saveChat(data.reply, false);
+    };
 
-        let imagesToLoad = 0;
+    document.getElementById("clearBtn").onclick = () => {
+        localStorage.removeItem("chatRahasia");
+        messagesDiv.innerHTML = "";
+    };
 
-        data.forEach(msg=>{
-            const div = document.createElement("div");
-            div.className="msg "+(msg.userId===userId?"self":"other");
-            div.innerHTML = `<div class="name">${msg.name}:</div>`;
-            if(msg.text) div.innerHTML += `<div class="text">${msg.text}</div>`;
-            if(msg.image){
-                const img = document.createElement("img");
-                img.src = msg.image;
-                imagesToLoad++;
-                img.onload = ()=>{
-                    imagesToLoad--;
-                    if(imagesToLoad===0 && data.length > lastMessageCount){
-                        chatBox.scrollTop = chatBox.scrollHeight;
-                    }
-                }
-                div.appendChild(img);
-            }
-            div.innerHTML += `<div class="time">${msg.time}</div>`;
-            chatBox.appendChild(div);
-        });
-
-        if(imagesToLoad===0 && data.length > lastMessageCount){
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        lastMessageCount = data.length;
-    }catch(err){ console.error(err); }
-}
-
-// ===== SEND MESSAGE =====
-async function kirim(){
-    const text = msgInput.value.trim();
-    const imgFile = imgInput.files[0];
-    if(!text && !imgFile) return;
-
-    const formData = new FormData();
-    formData.append("text", text);
-    formData.append("name", myName);
-    formData.append("userId", userId);
-    if(imgFile) formData.append("image", imgFile);
-
-    try{
-        await fetch("/send", { method:"POST", body:formData });
-    }catch(err){ console.error(err); }
-
-    msgInput.value=""; imgInput.value="";
-    msgInput.focus();
-    loadMessages();
-
-// === FIX CLEAR CHAT BUTTON ===
-const clearBtn = document.getElementById("clearChat");
-clearBtn.addEventListener("click", ()=>{
-    chatBox.innerHTML = "";
-    lastMessageCount = 0;
-});
-}
-
-// ===== CLEAR CHAT (LOCAL ONLY) =====
-document.getElementById("clearChat").addEventListener("click",()=>{
-    chatBox.innerHTML = "";
-    lastMessageCount = 0;
-});
-
-// ===== ONLINE USERS =====
-async function loadOnlineUsers(){
-    try{
-        await fetch("/heartbeat", {
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({userId, name: myName})
-        });
-
-        const res = await fetch("/online");
-        const users = await res.json();
-        onlineUsersDiv.innerText = "Online: " + users.length;
-    }catch(err){ console.error(err); }
-}
-
-document.getElementById("btnSend").addEventListener("click", kirim);
-msgInput.addEventListener("keypress", e=>{ if(e.key==="Enter"){ e.preventDefault(); kirim(); } });
-
-// Auto refresh tiap 1 detik
-setInterval(()=>{
-    loadMessages();
-    loadOnlineUsers();
-},1000);
-
-loadMessages();
-loadOnlineUsers();
+    loadChat();
 </script>
 
 </body>
