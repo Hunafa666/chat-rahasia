@@ -1,176 +1,253 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<title>CHAT RAHASIA</title>
-
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CHAT RAHASIA — Modern</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;600&display=swap" rel="stylesheet">
 <style>
-    body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: #f0e4d7;
-    }
-    .container {
-        width: 600px;
-        margin: 40px auto;
-        background: #b5896b;
-        border-radius: 20px;
-        padding: 20px;
-        box-shadow: 0 0 10px #00000055;
-    }
-    #messages {
-        height: 380px;
-        overflow-y: auto;
-        background: #d1a888;
-        padding: 10px;
-        border-radius: 15px;
-        border: 3px solid #8b5e3c;
-    }
-    .msg {
-        background: white;
-        padding: 8px 12px;
-        margin-bottom: 10px;
-        border-radius: 10px;
-        max-width: 80%;
-        animation: fade .3s;
-    }
-    .me { background: #dcf8c6; margin-left: auto; }
-    @keyframes fade { from {opacity:0;} to {opacity:1;} }
-
-    #input-area {
-        display: flex;
-        margin-top: 15px;
-        gap: 10px;
-    }
-    #input {
-        flex: 1;
-        padding: 10px;
-        border-radius: 10px;
-        border: none;
-    }
-
-    button {
-        padding: 10px 15px;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-    }
-    #sendBtn { background: #4CAF50; color: white; }
-    #clearBtn { 
-        background: #ff5252; 
-        color: white; 
-        margin-top: 10px; 
-        width: 100%; 
-    }
-
-    .onlineBox {
-        background:white; 
-        padding:5px 10px; 
-        border-radius:10px;
-        margin-bottom:10px;
-        text-align:right;
-    }
+  :root{
+    --bg:#f3efe9; --card:#fff; --accent:#4caf50; --muted:#6b6b6b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Quicksand',sans-serif;background:var(--bg);color:#111}
+  .app{max-width:920px;margin:20px auto;padding:18px;display:grid;grid-template-columns:1fr 300px;gap:18px}
+  .header{grid-column:1/-1;padding:12px;border-radius:12px;background:var(--card);box-shadow:0 6px 20px rgba(0,0,0,0.06);text-align:center;font-weight:600}
+  .panel{background:var(--card);border-radius:12px;padding:12px;box-shadow:0 6px 20px rgba(0,0,0,0.06)}
+  #chatArea{height:72vh;display:flex;flex-direction:column;gap:8px}
+  #messages{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(180deg,#e9d9c8,#d9bfa6);border-radius:10px}
+  .msg{max-width:78%;padding:10px;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.06);opacity:1}
+  .msg.me{align-self:flex-end;background:var(--accent);color:#fff}
+  .meta{font-size:12px;color:var(--muted);margin-bottom:6px}
+  #inputBar{display:flex;gap:8px;align-items:center}
+  #textInput{flex:1;padding:10px;border-radius:999px;border:1px solid #e6e6e6}
+  #fileInput{border:none}
+  button{padding:8px 14px;border-radius:10px;border:none;cursor:pointer}
+  .btnSend{background:var(--accent);color:white}
+  .btnClear{background:#ff6666;color:white}
+  .side{display:flex;flex-direction:column;gap:12px}
+  .avatar{width:44px;height:44px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#8b5cf6;color:white;font-weight:700}
+  .onlineList{max-height:55vh;overflow:auto}
+  img.chatImage{max-width:260px;border-radius:10px;margin-top:8px}
+  .hidden{display:none}
+  @media(max-width:880px){.app{grid-template-columns:1fr;}.side{order:2}}
 </style>
-
 </head>
 <body>
 
-<h1 style="text-align:center; margin-top:20px;">CHAT RAHASIA</h1>
+<div class="app">
+  <div class="header panel">CHAT RAHASIA — Modern</div>
 
-<div class="container">
-
-    <div class="onlineBox">Online: <span id="onlineCount">0</span></div>
-
-    <div id="messages"></div>
-
-    <form id="form" enctype="multipart/form-data">
-        <div id="input-area">
-            <input id="input" type="text" placeholder="Ketik pesan..." autocomplete="off">
-            <input type="file" id="image" accept="image/*">
-            <button id="sendBtn" type="submit">Kirim</button>
+  <div class="panel" id="chatArea">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;gap:10px;align-items:center">
+        <div id="myAvatar" class="avatar">U</div>
+        <div>
+          <div id="myName">Anon</div>
+          <div style="font-size:12px;color:var(--muted)">ID: <span id="myId"></span></div>
         </div>
-        <button id="clearBtn" type="button">Hapus Chat</button>
-    </form>
+      </div>
+      <div><small id="status">Disconnected</small></div>
+    </div>
 
+    <div id="messages" aria-live="polite"></div>
+
+    <div id="inputBar">
+      <input id="textInput" type="text" placeholder="Ketik pesan..." autocomplete="off" />
+      <input id="fileInput" type="file" accept="image/*" />
+      <button id="sendBtn" class="btnSend">Kirim</button>
+      <button id="clearBtn" class="btnClear">Hapus Tampilan</button>
+    </div>
+  </div>
+
+  <aside class="panel side">
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>Online</strong>
+        <small id="onlineCount">0</small>
+      </div>
+      <div id="userList" class="onlineList"></div>
+    </div>
+
+    <div id="nameBox" style="margin-top:6px">
+      <label for="nameInput"><strong>Nama (set sekali)</strong></label>
+      <input id="nameInput" placeholder="Masukkan nama..." style="width:100%;padding:8px;border-radius:8px;margin-top:6px;border:1px solid #e6e6e6" />
+      <button id="saveNameBtn" style="margin-top:8px;width:100%">Simpan Nama</button>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px">Nama akan disimpan di server dan tidak bisa diubah sembarangan.</div>
+    </div>
+  </aside>
 </div>
 
 <script>
-    const userId = localStorage.getItem("userId") || crypto.randomUUID();
-    localStorage.setItem("userId", userId);
-    
-    const messagesDiv = document.getElementById("messages");
+/* ---------- STATE ---------- */
+const userId = localStorage.getItem('userId') || crypto.randomUUID();
+localStorage.setItem('userId', userId);
 
-    // ================== LOAD CHAT ===================
-    async function loadMessages() {
-        const res = await fetch("/messages?userId=" + userId);
-        const data = await res.json();
+let myName = localStorage.getItem('myName') || '';
+const messagesDiv = document.getElementById('messages');
+const myNameDiv = document.getElementById('myName');
+const myIdSpan = document.getElementById('myId');
+const myAvatar = document.getElementById('myAvatar');
+const saveNameBtn = document.getElementById('saveNameBtn');
+const nameInput = document.getElementById('nameInput');
 
-        messagesDiv.innerHTML = "";
-        data.forEach(m => addMessage(m));
+myIdSpan.textContent = userId.slice(0,8);
+myNameDiv.textContent = myName || 'Anon';
+myAvatar.textContent = (myName? myName[0].toUpperCase() : 'U');
+
+/* incremental fetch */
+let lastFetched = 0; // timestamp of last message we rendered
+let polling = null;
+
+/* helper: create message element with temporary fade animation */
+function appendMessage(msg){
+  const el = document.createElement('div');
+  el.className = 'msg' + (msg.userId === userId ? ' me' : '');
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  meta.textContent = `${msg.name} • ${msg.time}`;
+  el.appendChild(meta);
+
+  if(msg.text){
+    const t = document.createElement('div');
+    t.textContent = msg.text;
+    el.appendChild(t);
+  }
+  if(msg.image){
+    const im = document.createElement('img');
+    im.src = msg.image;
+    im.className = 'chatImage';
+    el.appendChild(im);
+  }
+
+  // apply a single fade-in via Web Animations (no repeated CSS flicker)
+  el.animate([{opacity:0, transform:'translateY(6px)'},{opacity:1, transform:'translateY(0)'}], {duration:220, easing:'ease-out'});
+  messagesDiv.appendChild(el);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+/* fetch only new messages and render */
+async function loadMessages(){
+  try{
+    const res = await fetch(`/messages?userId=${encodeURIComponent(userId)}`);
+    if(!res.ok) return;
+    const data = await res.json();
+    // data contains messages after clear time; append only those with timestamp > lastFetched
+    const newMsgs = data.filter(m => m.timestamp > lastFetched);
+    if(newMsgs.length){
+      newMsgs.forEach(m => { appendMessage(m); if(m.timestamp > lastFetched) lastFetched = m.timestamp; });
     }
+  }catch(e){
+    console.error('loadMessages error', e);
+  }
+}
 
-    function addMessage(msg) {
-        const div = document.createElement("div");
-        div.className = "msg" + (msg.userId === userId ? " me" : "");
-        div.innerHTML = `
-            <b>${msg.name}</b> (${msg.time})<br>
-            ${msg.text ? msg.text : ""}
-            ${msg.image ? `<br><img src="${msg.image}" style="max-width:200px;border-radius:10px;">` : ""}
-        `;
-        messagesDiv.appendChild(div);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+/* save name once: call server /setname (server will only accept if not set yet) */
+async function saveName(){
+  const val = nameInput.value.trim();
+  if(!val) return alert('Tulis namamu dulu.');
+  try{
+    const res = await fetch('/setname', {
+      method:'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ userId, name: val })
+    });
+    const j = await res.json();
+    if(j.status === 'ok' || j.status === 'exists'){
+      myName = j.name;
+      localStorage.setItem('myName', myName);
+      myNameDiv.textContent = myName;
+      myAvatar.textContent = myName[0].toUpperCase();
+      nameInput.value = '';
+      nameInput.disabled = true;
+      saveNameBtn.disabled = true;
+      alert('Nama tersimpan: ' + myName);
+    } else {
+      alert('Gagal menyimpan nama.');
     }
+  }catch(err){ console.error(err); alert('Gagal koneksi'); }
+}
 
-    // ================== SEND MESSAGE ===================
-    document.getElementById("form").onsubmit = async (e) => {
-        e.preventDefault();
-        const text = document.getElementById("input").value;
-        const file = document.getElementById("image").files[0];
+/* send message (text + optional image) */
+async function sendMessage(){
+  const text = document.getElementById('textInput').value.trim();
+  const file = document.getElementById('fileInput').files[0];
+  if(!text && !file) return;
 
-        if (!text && !file) return;
+  const fd = new FormData();
+  fd.append('text', text);
+  fd.append('userId', userId);
+  // don't send name here; server uses stored name
+  if(file) fd.append('image', file);
 
-        const fd = new FormData();
-        fd.append("text", text);
-        fd.append("userId", userId);
-        fd.append("name", "Pengguna");
-        if (file) fd.append("image", file);
+  // small anti-spam: disable button briefly
+  const sendBtn = document.getElementById('sendBtn');
+  sendBtn.disabled = true;
+  try{
+    await fetch('/send', { method:'POST', body:fd });
+    // clear inputs
+    document.getElementById('textInput').value = '';
+    document.getElementById('fileInput').value = '';
+    // immediately request new messages
+    await loadMessages();
+  }catch(e){
+    console.error('send error', e);
+  }finally{
+    sendBtn.disabled = false;
+  }
+}
 
-        await fetch("/send", { method:"POST", body:fd });
+/* clear view for this user */
+async function clearView(){
+  try{
+    await fetch('/clear', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ userId }) });
+    messagesDiv.innerHTML = '';
+    lastFetched = Date.now(); // update to avoid old messages reappearing
+  }catch(e){ console.error(e); }
+}
 
-        document.getElementById("input").value = "";
-        document.getElementById("image").value = "";
+/* heartbeat / online users */
+async function heartbeat(){
+  try{
+    await fetch('/heartbeat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ userId, name: myName || 'Anon' })});
+    const r = await fetch('/online');
+    const list = await r.json();
+    document.getElementById('onlineCount').textContent = list.length;
+    const userList = document.getElementById('userList');
+    userList.innerHTML = '';
+    list.forEach(n => { const d = document.createElement('div'); d.textContent = n; userList.appendChild(d); });
+  }catch(e){ console.error(e); }
+}
 
-        loadMessages();
-    };
+/* init */
+document.getElementById('saveNameBtn').addEventListener('click', saveName);
+document.getElementById('sendBtn').addEventListener('click', sendMessage);
+document.getElementById('clearBtn').addEventListener('click', clearView);
+document.getElementById('textInput').addEventListener('keypress', e => { if(e.key === 'Enter') sendMessage(); });
 
-    // ================== CLEAR CHAT ===================
-    document.getElementById("clearBtn").onclick = async () => {
-        await fetch("/clear", {
-            method: "POST",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({ userId })
-        });
-        messagesDiv.innerHTML = "";
-    };
+/* if already have name in localStorage, ensure server knows it (try setName but server will ignore if exists) */
+(async function ensureName(){
+  const stored = localStorage.getItem('myName');
+  if(stored){
+    try{
+      const res = await fetch('/setname', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ userId, name: stored })});
+      const j = await res.json();
+      if(j.status === 'ok' || j.status === 'exists'){
+        myName = j.name;
+        localStorage.setItem('myName', myName);
+        myNameDiv.textContent = myName;
+        myAvatar.textContent = myName[0].toUpperCase();
+        nameInput.disabled = true; saveNameBtn.disabled = true;
+      }
+    }catch(e){}
+  }
+})();
 
-    // ================== ONLINE USERS ===================
-    setInterval(async () => {
-        await fetch("/heartbeat", {
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({ userId, name:"Pengguna" })
-        });
+/* start polling and heartbeat */
+loadMessages().then(()=>{ /* set lastFetched to now if no messages */ if(lastFetched===0) lastFetched = Date.now(); });
+polling = setInterval(loadMessages, 2000);
+setInterval(heartbeat, 4000);
+heartbeat();
 
-        const r = await fetch("/online");
-        const list = await r.json();
-        document.getElementById("onlineCount").textContent = list.length;
-    }, 3000);
-
-    // ================== AUTO REFRESH ===================
-    setInterval(loadMessages, 2000);
-
-    loadMessages();
 </script>
-
 </body>
 </html>
