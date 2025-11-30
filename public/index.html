@@ -45,6 +45,7 @@ header{font-size:1.8rem;}
         <input id="imgInput" type="file" accept="image/*">
         <button id="btnSend">Kirim</button>
     </div>
+    <button id="clearChat" style="margin-top:10px;padding:10px 15px;border:none;border-radius:15px;background:#d9534f;color:white;cursor:pointer;font-size:14px;width:120px;align-self:center;">Clear Chat</button>
 </div>
 
 <script>
@@ -121,6 +122,12 @@ async function kirim(){
     msgInput.focus();
     loadMessages();
 }
+
+// ===== CLEAR CHAT (LOCAL ONLY) =====
+document.getElementById("clearChat").addEventListener("click",()=>{
+    chatBox.innerHTML = "";
+    lastMessageCount = 0;
+});
 
 // ===== ONLINE USERS =====
 async function loadOnlineUsers(){
