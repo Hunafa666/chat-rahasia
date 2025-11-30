@@ -124,6 +124,13 @@ async function kirim(){
     msgInput.value=""; imgInput.value="";
     msgInput.focus();
     loadMessages();
+
+// === FIX CLEAR CHAT BUTTON ===
+const clearBtn = document.getElementById("clearChat");
+clearBtn.addEventListener("click", ()=>{
+    chatBox.innerHTML = "";
+    lastMessageCount = 0;
+});
 }
 
 // ===== CLEAR CHAT (LOCAL ONLY) =====
