@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>CHAT RAHASIA — Modern</title>
 <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;600&display=swap" rel="stylesheet">
+
 <style>
   :root{
     --bg:#f3efe9; --card:#fff; --accent:#4caf50; --muted:#6b6b6b;
@@ -29,7 +30,6 @@
   .avatar{width:44px;height:44px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#8b5cf6;color:white;font-weight:700}
   .onlineList{max-height:55vh;overflow:auto}
   img.chatImage{max-width:260px;border-radius:10px;margin-top:8px}
-  .hidden{display:none}
   @media(max-width:880px){.app{grid-template-columns:1fr;}.side{order:2}}
 </style>
 </head>
@@ -47,7 +47,7 @@
           <div style="font-size:12px;color:var(--muted)">ID: <span id="myId"></span></div>
         </div>
       </div>
-      <div><small id="status">Disconnected</small></div>
+      <div><small id="status">Connected</small></div>
     </div>
 
     <div id="messages" aria-live="polite"></div>
@@ -73,7 +73,7 @@
       <label for="nameInput"><strong>Nama (set sekali)</strong></label>
       <input id="nameInput" placeholder="Masukkan nama..." style="width:100%;padding:8px;border-radius:8px;margin-top:6px;border:1px solid #e6e6e6" />
       <button id="saveNameBtn" style="margin-top:8px;width:100%">Simpan Nama</button>
-      <div style="font-size:12px;color:var(--muted);margin-top:6px">Nama akan disimpan di server dan tidak bisa diubah sembarangan.</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px">Nama disimpan di server & tidak bisa diubah.</div>
     </div>
   </aside>
 </div>
@@ -95,14 +95,14 @@ myIdSpan.textContent = userId.slice(0,8);
 myNameDiv.textContent = myName || 'Anon';
 myAvatar.textContent = (myName? myName[0].toUpperCase() : 'U');
 
-/* incremental fetch */
-let lastFetched = 0; // timestamp of last message we rendered
-let polling = null;
+/* timestamp server-based */
+let lastFetched = 0;
 
-/* helper: create message element with temporary fade animation */
+/* ----- RENDERING ----- */
 function appendMessage(msg){
   const el = document.createElement('div');
   el.className = 'msg' + (msg.userId === userId ? ' me' : '');
+
   const meta = document.createElement('div');
   meta.className = 'meta';
   meta.textContent = `${msg.name} • ${msg.time}`;
@@ -113,6 +113,7 @@ function appendMessage(msg){
     t.textContent = msg.text;
     el.appendChild(t);
   }
+
   if(msg.image){
     const im = document.createElement('img');
     im.src = msg.image;
@@ -120,54 +121,49 @@ function appendMessage(msg){
     el.appendChild(im);
   }
 
-  // apply a single fade-in via Web Animations (no repeated CSS flicker)
-  el.animate([{opacity:0, transform:'translateY(6px)'},{opacity:1, transform:'translateY(0)'}], {duration:220, easing:'ease-out'});
   messagesDiv.appendChild(el);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
-/* fetch only new messages and render */
+/* ----- FETCH MESSAGES ----- */
 async function loadMessages(){
   try{
-    const res = await fetch(`/messages?userId=${encodeURIComponent(userId)}`);
+    const res = await fetch(`/messages?userId=${encodeURIComponent(userId)}&since=${lastFetched}`);
     if(!res.ok) return;
+
     const data = await res.json();
-    // data contains messages after clear time; append only those with timestamp > lastFetched
-    const newMsgs = data.filter(m => m.timestamp > lastFetched);
-    if(newMsgs.length){
-      newMsgs.forEach(m => { appendMessage(m); if(m.timestamp > lastFetched) lastFetched = m.timestamp; });
+    if(data.length){
+      data.forEach(m => appendMessage(m));
+      lastFetched = data[data.length - 1].timestamp;
     }
   }catch(e){
-    console.error('loadMessages error', e);
+    console.error(e);
   }
 }
 
-/* save name once: call server /setname (server will only accept if not set yet) */
+/* ----- SAVE NAME ----- */
 async function saveName(){
   const val = nameInput.value.trim();
-  if(!val) return alert('Tulis namamu dulu.');
-  try{
-    const res = await fetch('/setname', {
-      method:'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ userId, name: val })
-    });
-    const j = await res.json();
-    if(j.status === 'ok' || j.status === 'exists'){
-      myName = j.name;
-      localStorage.setItem('myName', myName);
-      myNameDiv.textContent = myName;
-      myAvatar.textContent = myName[0].toUpperCase();
-      nameInput.value = '';
-      nameInput.disabled = true;
-      saveNameBtn.disabled = true;
-      alert('Nama tersimpan: ' + myName);
-    } else {
-      alert('Gagal menyimpan nama.');
-    }
-  }catch(err){ console.error(err); alert('Gagal koneksi'); }
+  if(!val) return alert('Isi nama dulu.');
+
+  const res = await fetch('/setname',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ userId, name: val })
+  });
+
+  const j = await res.json();
+  if(j.status === 'ok' || j.status === 'exists'){
+    myName = j.name;
+    localStorage.setItem('myName', myName);
+    myNameDiv.textContent = myName;
+    myAvatar.textContent = myName[0].toUpperCase();
+    nameInput.disabled = true;
+    saveNameBtn.disabled = true;
+  }
 }
 
-/* send message (text + optional image) */
+/* ----- SEND MESSAGE ----- */
 async function sendMessage(){
   const text = document.getElementById('textInput').value.trim();
   const file = document.getElementById('fileInput').files[0];
@@ -176,78 +172,83 @@ async function sendMessage(){
   const fd = new FormData();
   fd.append('text', text);
   fd.append('userId', userId);
-  // don't send name here; server uses stored name
   if(file) fd.append('image', file);
 
-  // small anti-spam: disable button briefly
-  const sendBtn = document.getElementById('sendBtn');
-  sendBtn.disabled = true;
-  try{
-    await fetch('/send', { method:'POST', body:fd });
-    // clear inputs
-    document.getElementById('textInput').value = '';
-    document.getElementById('fileInput').value = '';
-    // immediately request new messages
-    await loadMessages();
-  }catch(e){
-    console.error('send error', e);
-  }finally{
-    sendBtn.disabled = false;
-  }
+  document.getElementById('sendBtn').disabled = true;
+
+  await fetch('/send', { method:'POST', body: fd });
+
+  document.getElementById('textInput').value = '';
+  document.getElementById('fileInput').value = '';
+
+  document.getElementById('sendBtn').disabled = false;
 }
 
-/* clear view for this user */
+/* ----- CLEAR VIEW (PER USER) ----- */
 async function clearView(){
-  try{
-    await fetch('/clear', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ userId }) });
-    messagesDiv.innerHTML = '';
-    lastFetched = Date.now(); // update to avoid old messages reappearing
-  }catch(e){ console.error(e); }
+  await fetch('/clear',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ userId })
+  });
+
+  messagesDiv.innerHTML = '';
+  lastFetched = Date.now();
 }
 
-/* heartbeat / online users */
+/* ----- ONLINE USERS ----- */
 async function heartbeat(){
-  try{
-    await fetch('/heartbeat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ userId, name: myName || 'Anon' })});
-    const r = await fetch('/online');
-    const list = await r.json();
-    document.getElementById('onlineCount').textContent = list.length;
-    const userList = document.getElementById('userList');
-    userList.innerHTML = '';
-    list.forEach(n => { const d = document.createElement('div'); d.textContent = n; userList.appendChild(d); });
-  }catch(e){ console.error(e); }
+  await fetch('/heartbeat',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ userId, name: myName || 'Anon' })
+  });
+
+  const r = await fetch('/online');
+  const list = await r.json();
+
+  document.getElementById('onlineCount').textContent = list.length;
+
+  const userList = document.getElementById('userList');
+  userList.innerHTML = '';
+  list.forEach(n=>{
+    const d = document.createElement('div');
+    d.textContent = n;
+    userList.appendChild(d);
+  });
 }
 
-/* init */
-document.getElementById('saveNameBtn').addEventListener('click', saveName);
+/* EVENTS */
+saveNameBtn.addEventListener('click', saveName);
 document.getElementById('sendBtn').addEventListener('click', sendMessage);
 document.getElementById('clearBtn').addEventListener('click', clearView);
-document.getElementById('textInput').addEventListener('keypress', e => { if(e.key === 'Enter') sendMessage(); });
+document.getElementById('textInput').addEventListener('keypress', e=>{
+  if(e.key === 'Enter') sendMessage();
+});
 
-/* if already have name in localStorage, ensure server knows it (try setName but server will ignore if exists) */
-(async function ensureName(){
-  const stored = localStorage.getItem('myName');
-  if(stored){
-    try{
-      const res = await fetch('/setname', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ userId, name: stored })});
-      const j = await res.json();
-      if(j.status === 'ok' || j.status === 'exists'){
-        myName = j.name;
-        localStorage.setItem('myName', myName);
-        myNameDiv.textContent = myName;
-        myAvatar.textContent = myName[0].toUpperCase();
-        nameInput.disabled = true; saveNameBtn.disabled = true;
-      }
-    }catch(e){}
+/* INIT */
+(async function init(){
+  if(myName){
+    const res = await fetch('/setname',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ userId, name: myName })
+    });
+    const j = await res.json();
+    if(j.status === 'ok' || j.status === 'exists'){
+      myName = j.name;
+      myNameDiv.textContent = myName;
+      myAvatar.textContent = myName[0].toUpperCase();
+      nameInput.disabled = true;
+      saveNameBtn.disabled = true;
+    }
   }
+
+  await loadMessages();
+  setInterval(loadMessages, 2000);
+  setInterval(heartbeat, 4000);
+  heartbeat();
 })();
-
-/* start polling and heartbeat */
-loadMessages().then(()=>{ /* set lastFetched to now if no messages */ if(lastFetched===0) lastFetched = Date.now(); });
-polling = setInterval(loadMessages, 2000);
-setInterval(heartbeat, 4000);
-heartbeat();
-
 </script>
 </body>
 </html>
